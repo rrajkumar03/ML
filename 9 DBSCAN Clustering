@@ -1,0 +1,90 @@
+
+# Experiment 9: DBSCAN Clustering
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.datasets import load_wine
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import DBSCAN
+from sklearn.decomposition import PCA
+from sklearn.metrics import silhouette_score
+
+# Step 1: Load the Wine dataset
+wine = load_wine()
+
+X = wine.data
+feature_names = wine.feature_names
+
+# Create a DataFrame
+df = pd.DataFrame(X, columns=feature_names)
+
+print("First five rows of the dataset:")
+print(df.head())
+
+print("\nDataset shape:", X.shape)
+
+# Step 2: Standardize the features
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Step 3: Apply DBSCAN
+dbscan = DBSCAN(eps=2.5, min_samples=5)
+labels = dbscan.fit_predict(X_scaled)
+
+# Step 4: Count clusters and noise points
+unique_labels = set(labels)
+
+n_clusters = len(unique_labels - {-1})
+n_noise = np.sum(labels == -1)
+
+print("\nNumber of clusters:", n_clusters)
+print("Number of noise points:", n_noise)
+
+# Step 5: Find the largest cluster
+cluster_labels = labels[labels != -1]
+
+if len(cluster_labels) > 0:
+    counts = pd.Series(cluster_labels).value_counts()
+    largest_cluster_size = counts.max()
+    print("Largest cluster size:", largest_cluster_size)
+else:
+    print("Largest cluster size: 0")
+
+# Step 6: Reduce data to two dimensions using PCA
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_scaled)
+
+# Step 7: Visualize the clusters
+plt.figure(figsize=(8, 6))
+
+sns.scatterplot(
+    x=X_pca[:, 0],
+    y=X_pca[:, 1],
+    hue=labels,
+    palette="tab10",
+    s=70
+)
+
+plt.title("DBSCAN Clustering on Wine Dataset")
+plt.xlabel("Principal Component 1")
+plt.ylabel("Principal Component 2")
+plt.legend(title="Cluster (-1 = Noise)")
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()
+
+# Step 8: Calculate the silhouette score
+# Exclude noise points from the evaluation
+mask = labels != -1
+non_noise_labels = labels[mask]
+n_non_noise_clusters = len(set(non_noise_labels))
+
+if 2 <= n_non_noise_clusters < len(non_noise_labels):
+    score = silhouette_score(X_scaled[mask], non_noise_labels)
+    print("Silhouette Score:", round(score, 3))
+else:
+    print("Silhouette Score cannot be calculated:")
+    print("At least two non-noise clusters are required.")
