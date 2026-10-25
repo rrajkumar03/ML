@@ -1,0 +1,128 @@
+import time
+import numpy as np
+import pandas as pd
+
+from sklearn.datasets import load_breast_cancer
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+
+from sklearn.decomposition import PCA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+
+# -------------------------
+# Load Dataset
+# -------------------------
+
+data = load_breast_cancer()
+
+X = data.data
+y = data.target
+
+# -------------------------
+# Standardization
+# -------------------------
+
+scaler = StandardScaler()
+X = scaler.fit_transform(X)
+
+# -------------------------
+# Train-Test Split
+# -------------------------
+
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.30,random_state=42
+)
+
+# ====================================================
+# Model WITHOUT dimensionality reduction
+# ====================================================
+
+model = LogisticRegression(max_iter=500)
+
+start = time.time()
+
+model.fit(X_train, y_train)
+
+train_time = time.time() - start
+
+pred = model.predict(X_test)
+
+acc_original = accuracy_score(y_test, pred)
+
+print("Original Features")
+print("----------------------")
+print("Features :", X_train.shape[1])
+print("Accuracy :", acc_original)
+print("Training Time :", train_time)
+
+# ====================================================
+# PCA
+# ====================================================
+
+pca = PCA(n_components=10)
+
+X_train_pca = pca.fit_transform(X_train)
+X_test_pca = pca.transform(X_test)
+
+model_pca = LogisticRegression(max_iter=500)
+
+start = time.time()
+
+model_pca.fit(X_train_pca, y_train)
+
+train_time_pca = time.time() - start
+
+pred_pca = model_pca.predict(X_test_pca)
+
+acc_pca = accuracy_score(y_test, pred_pca)
+
+print("\nPCA")
+print("----------------------")
+print("Features :", X_train_pca.shape[1])
+print("Accuracy :", acc_pca)
+print("Training Time :", train_time_pca)
+
+# ====================================================
+# LDA
+# ====================================================
+
+lda = LinearDiscriminantAnalysis(n_components=1)
+
+X_train_lda = lda.fit_transform(X_train, y_train)
+X_test_lda = lda.transform(X_test)
+
+model_lda = LogisticRegression(max_iter=500)
+
+start = time.time()
+
+model_lda.fit(X_train_lda, y_train)
+
+train_time_lda = time.time() - start
+
+pred_lda = model_lda.predict(X_test_lda)
+
+acc_lda = accuracy_score(y_test, pred_lda)
+
+print("\nLDA")
+print("----------------------")
+print("Features :", X_train_lda.shape[1])
+print("Accuracy :", acc_lda)
+print("Training Time :", train_time_lda)
+
+# -------------------------
+# Summary Table
+# -------------------------
+
+result = pd.DataFrame({
+    "Method":["Original","PCA","LDA"],
+    "Features":[30,10,1],
+    "Accuracy":[acc_original,acc_pca,acc_lda],
+    "Training Time":[train_time,train_time_pca,train_time_lda]
+})
+
+print("\nSummary")
+print(result)
+
+
