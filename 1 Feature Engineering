@@ -1,20 +1,34 @@
-import pandas as pd 
+# Import required libraries
+import pandas as pd
 import seaborn as sns
- from sklearn.impute import SimpleImputer
- from sklearn.preprocessing import LabelEncoder, StandardScaler
-df = sns.load_dataset('titanic') 
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+
+# Load Titanic dataset
+df = sns.load_dataset('titanic')
 print(df.head())
 print(df.isnull().sum())
-df = df[['age','fare','sex','class','embarked','survived']]
-num_imputer = SimpleImputer(strategy='mean') 
+
+# Select required columns
+df = df[['age', 'fare', 'sex', 'class', 'embarked', 'survived']]
+
+# Handle missing values
+num_imputer = SimpleImputer(strategy='mean')
 df[['age']] = num_imputer.fit_transform(df[['age']])
-cat_imputer = SimpleImputer(strategy='most_frequent') 
+
+cat_imputer = SimpleImputer(strategy='most_frequent')
 df[['embarked']] = cat_imputer.fit_transform(df[['embarked']])
-encoder = LabelEncoder() 
-df['sex'] = encoder.fit_transform(df['sex']) 
-df['class'] = encoder.fit_transform(df['class']) 
+
+# Encode categorical data into numerical values
+encoder = LabelEncoder()
+df['sex'] = encoder.fit_transform(df['sex'])
+df['class'] = encoder.fit_transform(df['class'])
 df['embarked'] = encoder.fit_transform(df['embarked'])
-scaler = StandardScaler() 
-df[['age','fare']] = scaler.fit_transform(df[['age','fare']])
+
+# Standardize numerical columns
+scaler = StandardScaler()
+df[['age', 'fare']] = scaler.fit_transform(df[['age', 'fare']])
+
+# Display preprocessed dataset
 print(df.head())
 print(df.info())
