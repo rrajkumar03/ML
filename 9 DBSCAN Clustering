@@ -1,90 +1,174 @@
-
-# Experiment 9: DBSCAN Clustering
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from sklearn.datasets import load_wine
+from sklearn.datasets import load_iris
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import DBSCAN
-from sklearn.decomposition import PCA
-from sklearn.metrics import silhouette_score
-
-# Step 1: Load the Wine dataset
-wine = load_wine()
-
-X = wine.data
-feature_names = wine.feature_names
-
-# Create a DataFrame
-df = pd.DataFrame(X, columns=feature_names)
-
-print("First five rows of the dataset:")
-print(df.head())
-
-print("\nDataset shape:", X.shape)
-
-# Step 2: Standardize the features
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-
-# Step 3: Apply DBSCAN
-dbscan = DBSCAN(eps=2.5, min_samples=5)
-labels = dbscan.fit_predict(X_scaled)
-
-# Step 4: Count clusters and noise points
-unique_labels = set(labels)
-
-n_clusters = len(unique_labels - {-1})
-n_noise = np.sum(labels == -1)
-
-print("\nNumber of clusters:", n_clusters)
-print("Number of noise points:", n_noise)
-
-# Step 5: Find the largest cluster
-cluster_labels = labels[labels != -1]
-
-if len(cluster_labels) > 0:
-    counts = pd.Series(cluster_labels).value_counts()
-    largest_cluster_size = counts.max()
-    print("Largest cluster size:", largest_cluster_size)
-else:
-    print("Largest cluster size: 0")
-
-# Step 6: Reduce data to two dimensions using PCA
-pca = PCA(n_components=2)
-X_pca = pca.fit_transform(X_scaled)
-
-# Step 7: Visualize the clusters
-plt.figure(figsize=(8, 6))
-
-sns.scatterplot(
-    x=X_pca[:, 0],
-    y=X_pca[:, 1],
-    hue=labels,
-    palette="tab10",
-    s=70
+from sklearn.metrics import (
+    silhouette_score,
+    davies_bouldin_score,
+    calinski_harabasz_score
 )
 
-plt.title("DBSCAN Clustering on Wine Dataset")
-plt.xlabel("Principal Component 1")
-plt.ylabel("Principal Component 2")
-plt.legend(title="Cluster (-1 = Noise)")
-plt.grid(True, alpha=0.3)
-plt.tight_layout()
+# ------------------------------------------------------------
+# 1. Load the dataset
+# ------------------------------------------------------------
+
+iris = load_iris()
+
+X = pd.DataFrame(
+    iris.data,
+    columns=iris.feature_names
+)
+
+print("Dataset shape:", X.shape)
+print("\nFirst five rows:")
+print(X.head())
+
+# ------------------------------------------------------------
+# 2. Standardize the features
+# ------------------------------------------------------------
+
+scaler = StandardScaler()
+
+X_scaled = scaler.fit_transform(X)
+
+# ------------------------------------------------------------
+# 3. Apply DBSCAN
+# ------------------------------------------------------------
+
+dbscan = DBSCAN(
+    eps=0.8,
+    min_samples=5
+)
+
+labels = dbscan.fit_predict(X_scaled)
+
+# Add cluster labels
+X["Cluster"] = labels
+
+# ------------------------------------------------------------
+# 4. Display clustering results
+# ------------------------------------------------------------
+
+print("\nUnique cluster labels:")
+print(np.unique(labels))
+
+print("\nNumber of observations per cluster:")
+print(
+    pd.Series(labels)
+    .value_counts()
+    .sort_index()
+)
+
+# DBSCAN uses -1 for noise
+noise_count = np.sum(labels == -1)
+
+print("\nNumber of noise points:", noise_count)
+
+# Number of actual clusters
+n_clusters = len(set(labels)) - (
+    1 if -1 in labels else 0
+)
+
+print("Number of clusters:", n_clusters)
+
+# ------------------------------------------------------------
+# 5. Visualize clusters
+# ------------------------------------------------------------
+
+plt.figure(figsize=(10, 7))
+
+unique_labels = sorted(set(labels))
+
+colors = sns.color_palette(
+    "tab10",
+    n_colors=max(len(unique_labels), 1)
+)
+
+for i, label in enumerate(unique_labels):
+
+    mask = labels == label
+
+    if label == -1:
+        # Noise points
+        plt.scatter(
+            X_scaled[mask, 0],
+            X_scaled[mask, 1],
+            c="black",
+            marker="x",
+            s=80,
+            label="Noise"
+        )
+
+    else:
+        plt.scatter(
+            X_scaled[mask, 0],
+            X_scaled[mask, 1],
+            c=[colors[i]],
+            marker="o",
+            s=60,
+            alpha=0.75,
+            label=f"Cluster {label}"
+        )
+
+plt.xlabel("Standardized Sepal Length")
+plt.ylabel("Standardized Sepal Width")
+plt.title("DBSCAN Clustering of Iris Dataset")
+plt.legend()
+plt.grid(alpha=0.3)
+
 plt.show()
 
-# Step 8: Calculate the silhouette score
-# Exclude noise points from the evaluation
-mask = labels != -1
-non_noise_labels = labels[mask]
-n_non_noise_clusters = len(set(non_noise_labels))
+# ------------------------------------------------------------
+# 6. Evaluate clustering
+# ------------------------------------------------------------
 
-if 2 <= n_non_noise_clusters < len(non_noise_labels):
-    score = silhouette_score(X_scaled[mask], non_noise_labels)
-    print("Silhouette Score:", round(score, 3))
+# Exclude noise from internal clustering metrics
+non_noise = labels != -1
+
+X_eval = X_scaled[non_noise]
+labels_eval = labels[non_noise]
+
+if len(np.unique(labels_eval)) >= 2:
+
+    silhouette = silhouette_score(
+        X_eval,
+        labels_eval
+    )
+
+    davies_bouldin = davies_bouldin_score(
+        X_eval,
+        labels_eval
+    )
+
+    calinski_harabasz = calinski_harabasz_score(
+        X_eval,
+        labels_eval
+    )
+
+    print("\nClustering Evaluation")
+    print("---------------------")
+
+    print(
+        "Silhouette Score:",
+        round(silhouette, 4)
+    )
+
+    print(
+        "Davies-Bouldin Index:",
+        round(davies_bouldin, 4)
+    )
+
+    print(
+        "Calinski-Harabasz Score:",
+        round(calinski_harabasz, 4)
+    )
+
 else:
-    print("Silhouette Score cannot be calculated:")
-    print("At least two non-noise clusters are required.")
+    print(
+        "\nAt least two clusters are required "
+        "to calculate the metrics."
+    )
